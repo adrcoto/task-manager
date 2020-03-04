@@ -6,11 +6,20 @@ require('./db/mongoose');
 /**
  * Routers
  */
-
 const userRouter = require('./routers/user');
 const taskRouter = require('./routers/task');
 
 let app = express();
+
+/**
+ * Maintenance middleware
+ */
+/*
+app.use((req, res, next) => {
+    res.status(503).send('Site is currently down. Check back soon!');
+});
+*/
+
 
 app.use(express.json());
 app.use(userRouter);
@@ -38,12 +47,5 @@ server.listen(port, () => {
 app.get('/', (req, res) => {
     res.send('Yolomaaaa');
 });
-
-
-
-
-
-
-
 
 

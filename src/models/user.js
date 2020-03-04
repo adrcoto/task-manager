@@ -1,7 +1,13 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Task = require('../models/task');
 
-const User = mongoose.model('User', {
+/**
+ * Defining the user schema
+ */
+const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -9,6 +15,7 @@ const User = mongoose.model('User', {
     },
     email: {
         type: String,
+        unique: true,
         required: true,
         trim: true,
         lowercase: true,
@@ -31,7 +38,95 @@ const User = mongoose.model('User', {
         type: Number,
         default: 0,
         min: [18, 'You have to be an adult']
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 });
+
+/**
+ * Adds reference to Task model
+ */
+userSchema.virtual('tasks', {
+    ref: 'Task',
+    localField: '_id',
+    foreignField: 'owner'
+});
+
+/**
+ * Get user profile
+ */
+userSchema.methods.toJSON = function () {
+    const userObject = this.toObject();
+    delete userObject.password;
+    delete userObject.tokens;
+    delete userObject.__v;
+
+    return userObject;
+};
+
+/**
+ * Generates jwt token
+ * @returns {Promise<undefined|*>}
+ */
+userSchema.methods.generateAuthToken = async function () {
+    const token = jwt.sign({ _id: this._id.toString() }, 'omoshiroi');
+
+    this.tokens = this.tokens.concat({ token });
+    await this.save();
+
+    return token;
+};
+
+/**
+ *  Get user to login
+ * @param email
+ * @param password
+ * @returns {Promise<*>}
+ */
+userSchema.statics.findByCredentials = async (email, password) => {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        throw new Error('Unable to login');
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+        throw new Error('Unable to login');
+    }
+
+    return user;
+};
+
+/**
+ * Middleware to hash pasword before saving an user -> works for update too
+ */
+userSchema.pre('save', async function (next) {
+    if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 8);
+    }
+
+    next();
+});
+
+/**
+ * Delete user tasks when user is removed
+ */
+userSchema.pre('remove', async function (next) {
+    await Task.deleteMany({ owner: this._id });
+    next();
+});
+
+/**
+ * Aplying User schema
+ * @type {function(Object, *=, *=): void}
+ */
+const User = mongoose.model('User', userSchema);
+
 
 module.exports = User;
