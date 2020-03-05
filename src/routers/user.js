@@ -1,7 +1,27 @@
 const express = require('express');
-const router = new express.Router();
+const multer = require('multer');
+const sharp = require('sharp');
 const User = require('../models/user');
 const auth = require('../middelware/auth');
+
+const router = new express.Router();
+
+/**
+ * Avatar rules
+ * @type {Multer|undefined}
+ */
+const upload = multer({
+    limits: {
+        fileSize: 4194304 //4 mb
+    },
+    fileFilter(req, file, cb) {
+        if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            return cb(new Error('Please upload an image'));
+        }
+
+        cb(undefined, true);
+    }
+});
 
 /**
  * Login user
@@ -35,7 +55,6 @@ router.post('/users/logout', auth, async (req, res) => {
 /**
  * Logout user from all devices
  */
-
 router.post('/users/logoutAll', auth, async (req, res) => {
     try {
         req.user.tokens = [];
@@ -70,35 +89,6 @@ router.get('/users/me', auth, async (req, res) => {
 });
 
 /**
- * Get one user by id
- */
-/*router.get('/users/:id', async (req, res) => {
-    /!* const _id = req.params.id;
-     User.findById({ _id }).then((user) => {
-          if (!user) {
-              return res.status(404).send();
-          }
-          res.send(user);
-      }).catch((err) => {
-          res.status(500).send(err);
-      });*!/
-
-    /!**
-     * Refactoring using async-await
-     *!/
-
-    try {
-        const user = await User.findById(req.params.id);
-        if (!user)
-            return res.status(404).send();
-
-        res.send(user);
-    } catch (error) {
-        res.status().send(error);
-    }
-});*/
-
-/**
  * Update user
  */
 router.patch('/users/me', auth, async (req, res) => {
@@ -130,5 +120,51 @@ router.delete('/users/me', auth, async (req, res) => {
     }
 });
 
+
+/**
+ * Profile endpoints
+ */
+
+/**
+ * Adding support for profile avatar upload
+ */
+router.post('/users/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+    req.user.avatar = await sharp(req.file.buffer).resize({ width: 250, height: 250 }).png().toBuffer();
+    await req.user.save();
+    res.send();
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+});
+
+/**
+ * Delete profile avatar
+ */
+router.delete('/users/me/avatar', auth, async (req, res) => {
+    try {
+        req.user.avatar = undefined;
+        await req.user.save();
+        res.send();
+    } catch (error) {
+        res.status(400).send();
+    }
+});
+
+/**
+ * Get user avatar
+ */
+router.get('/users/:id/avatar', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user || !user.avatar) {
+            throw new Error();
+        }
+
+        res.set('Content-Type', 'image/png');
+        res.send(user.avatar);
+    } catch (error) {
+        res.status(404).send();
+    }
+});
 
 module.exports = router;

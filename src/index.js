@@ -35,7 +35,7 @@ const cert = fs.readFileSync(`${__dirname}/../cert/server.crt`);
 
 let server = https.createServer({ key, cert }, app);
 
-server.listen(port, () => {
+server.listen(parseInt(port), () => {
     console.log('Success', `Dev server listening on port ${port}`);
 });
 
@@ -47,5 +47,4 @@ server.listen(port, () => {
 app.get('/', (req, res) => {
     res.send('Yolomaaaa');
 });
-
 

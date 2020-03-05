@@ -44,7 +44,10 @@ const userSchema = new mongoose.Schema({
             type: String,
             required: true
         }
-    }]
+    }],
+    avatar: {
+        type: Buffer
+    }
 }, {
     timestamps: true
 });
@@ -59,13 +62,14 @@ userSchema.virtual('tasks', {
 });
 
 /**
- * Get user profile
+ * Hide user fields
  */
 userSchema.methods.toJSON = function () {
     const userObject = this.toObject();
     delete userObject.password;
     delete userObject.tokens;
     delete userObject.__v;
+    delete userObject.avatar;
 
     return userObject;
 };
