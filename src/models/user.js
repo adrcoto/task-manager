@@ -45,6 +45,8 @@ const userSchema = new mongoose.Schema({
             required: true
         }
     }]
+}, {
+    timestamps: true
 });
 
 /**
@@ -123,7 +125,7 @@ userSchema.pre('remove', async function (next) {
 });
 
 /**
- * Aplying User schema
+ * Applying User schema
  * @type {function(Object, *=, *=): void}
  */
 const User = mongoose.model('User', userSchema);
