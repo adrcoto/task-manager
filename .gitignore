@@ -1,2 +1,3 @@
 cert/
-dev.env
+config
+node_modules
